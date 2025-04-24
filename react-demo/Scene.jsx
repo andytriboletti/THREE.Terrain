@@ -16,6 +16,7 @@ export default function Scene() {
   const [showOrbitControls, setShowOrbitControls] = useState(false);
   const [characterPosition, setCharacterPosition] = useState([0, 300, 0]);
   const [characterVelocity, setCharacterVelocity] = useState([0, 0, 0]);
+  const [cameraDistance, setCameraDistance] = useState(10); // Default camera distance
   const { scene } = useThree();
 
   // Get keyboard controls
@@ -80,19 +81,44 @@ export default function Scene() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Add mouse wheel event listener for zooming
+  useEffect(() => {
+    const handleWheel = (event) => {
+      // Adjust zoom based on wheel direction
+      setCameraDistance(prevDistance => {
+        // Calculate new distance with limits
+        const newDistance = prevDistance + event.deltaY * 0.01;
+        return Math.max(5, Math.min(100, newDistance)); // Clamp between 5 and 100 (much farther out)
+      });
+    };
+
+    window.addEventListener('wheel', handleWheel);
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
+
   // Character movement logic
   useFrame((state, delta) => {
     // Get current keyboard state
-    const { forward, backward, leftward, rightward, jump, run } = getKeys();
+    const { forward, backward, leftward, rightward, jump, run, action1, action2 } = getKeys();
 
-    // Calculate movement direction
+    // Handle zoom with keys 1 and 2
+    if (action1) { // Zoom in with key 1
+      setCameraDistance(prevDistance => Math.max(5, prevDistance - 0.5));
+    }
+    if (action2) { // Zoom out with key 2
+      setCameraDistance(prevDistance => Math.min(100, prevDistance + 0.5));
+    }
+
+    // Calculate movement direction (fixed directions)
     let moveX = 0;
     let moveZ = 0;
 
-    if (forward) moveZ -= 1;
-    if (backward) moveZ += 1;
-    if (leftward) moveX -= 1;
-    if (rightward) moveX += 1;
+    // Fix WASD directions - forward is now positive Z, backward is negative Z
+    // leftward is positive X, rightward is negative X
+    if (forward) moveZ += 1;  // Changed from -= to +=
+    if (backward) moveZ -= 1; // Changed from += to -=
+    if (leftward) moveX += 1; // Changed from -= to +=
+    if (rightward) moveX -= 1; // Changed from += to -=
 
     // Normalize movement vector
     if (moveX !== 0 || moveZ !== 0) {
@@ -168,10 +194,17 @@ export default function Scene() {
     setCharacterPosition([newPosX, newPosY, newPosZ]);
     setCharacterVelocity([newVelX, newVelY, newVelZ]);
 
-    // Update camera position to follow character
-    state.camera.position.x = newPosX - cameraDirection.x * 10;
-    state.camera.position.z = newPosZ - cameraDirection.z * 10;
-    state.camera.position.y = newPosY + 5;
+    // Update camera position to follow character with dynamic distance
+    state.camera.position.x = newPosX - cameraDirection.x * cameraDistance;
+    state.camera.position.z = newPosZ - cameraDirection.z * cameraDistance;
+
+    // Height scales with distance but with a curve that flattens for very large distances
+    // This gives a more top-down view when zoomed far out
+    const heightScale = cameraDistance <= 20
+      ? cameraDistance * 0.5 // Normal scaling for close distances
+      : 10 + Math.sqrt(cameraDistance - 20) * 3; // Square root scaling for far distances
+
+    state.camera.position.y = newPosY + heightScale;
     state.camera.lookAt(newPosX, newPosY, newPosZ);
   });
 

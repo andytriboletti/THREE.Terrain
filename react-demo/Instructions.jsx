@@ -9,8 +9,9 @@ export default function Instructions() {
         <p>WASD / Arrow Keys = Move</p>
         <p>Space = Jump</p>
         <p>Shift = Run</p>
-        <p>Mouse = Look around (click and hold left mouse button)</p>
-        <p>Mouse Wheel = Zoom</p>
+        <p>1 = Zoom In (faster)</p>
+        <p>2 = Zoom Out (much farther)</p>
+        <p>Mouse Wheel = Zoom (smooth)</p>
         <p>P = Toggle Physics Debug</p>
         <p>O = Toggle Orbit Controls</p>
       </div>
