@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { Box, Plane } from '@react-three/drei';
+import { Box, Plane, useGLTF } from '@react-three/drei';
 import Terrain, { TerrainNS } from '../src/index.js';
 import { generateBlendedMaterial } from '../src/materials.js';
 

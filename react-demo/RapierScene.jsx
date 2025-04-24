@@ -2,20 +2,22 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { KeyboardControls, Sky, Stars } from '@react-three/drei';
 import { Physics, HeightfieldCollider } from '@react-three/rapier';
-import RapierCharacterController from './RapierCharacterController';
-import RapierCharacter from './RapierCharacter';
+import Ecctrl, { EcctrlAnimation } from '../ecctrl/src/Ecctrl';
+import ECCtrlCharacter from './ECCtrlCharacter';
 import { terminal } from "virtual:terminal";
 
-// Define keyboard controls map
+// Define keyboard controls map for ECCtrl
 const keyboardMap = [
   { name: 'forward', keys: ['ArrowUp', 'w', 'W'] },
   { name: 'backward', keys: ['ArrowDown', 's', 'S'] },
-  { name: 'left', keys: ['ArrowLeft', 'a', 'A'] },
-  { name: 'right', keys: ['ArrowRight', 'd', 'D'] },
+  { name: 'leftward', keys: ['ArrowLeft', 'a', 'A'] },
+  { name: 'rightward', keys: ['ArrowRight', 'd', 'D'] },
   { name: 'jump', keys: ['Space'] },
-  { name: 'sprint', keys: ['ShiftLeft', 'ShiftRight'] },
-  { name: 'zoom_in', keys: ['1'] },
-  { name: 'zoom_out', keys: ['2'] }
+  { name: 'run', keys: ['ShiftLeft', 'ShiftRight'] },
+  { name: 'action1', keys: ['1'] },
+  { name: 'action2', keys: ['2'] },
+  { name: 'action3', keys: ['3'] },
+  { name: 'action4', keys: ['4'] }
 ];
 
 // Terrain component that uses the existing THREE.Terrain
@@ -127,7 +129,7 @@ const RapierScene = ({ terrainScene }) => {
           <Physics gravity={[0, -9.81, 0]} debug={false}>
             <Terrain terrainScene={terrainScene} />
 
-            <RapierCharacterController
+            <Ecctrl
               position={[0, 300, 0]}
               jumpVel={7}
               maxVelLimit={8}
@@ -136,9 +138,19 @@ const RapierScene = ({ terrainScene }) => {
               camInitDis={-10}
               camMaxDis={-50}
               camMinDis={-1}
+              camFollowMult={11}
+              turnSpeed={15}
+              slopeMaxAngle={1}
+              debug={true}
+              autoBalance={false}
+              enableDamping={false}
+              enableJoystick={false}
+              enableFlyMode={false}
+              showDebugGui={false}
+              rigidBodyType="dynamic"
             >
-              <RapierCharacter />
-            </RapierCharacterController>
+              <ECCtrlCharacter />
+            </Ecctrl>
           </Physics>
         )}
       </Canvas>

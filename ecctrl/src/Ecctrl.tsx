@@ -158,7 +158,7 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
     if (findMode("CameraBasedMovement", mode)) isModeCameraBased = true
   }
 
-  /** 
+  /**
    * Body collider setup
    */
   const modelFacingVec: THREE.Vector3 = useMemo(() => new THREE.Vector3(), []);
@@ -651,7 +651,7 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
      * Setup moving direction
      */
     // Only apply slope angle to moving direction
-    // when slope angle is between 0.2rad and slopeMaxAngle, 
+    // when slope angle is between 0.2rad and slopeMaxAngle,
     // and actualSlopeAngle < slopeMaxAngle
     if (
       actualSlopeAngle < slopeMaxAngle &&
@@ -723,8 +723,9 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
     );
 
     // Wanted to move force function: F = ma
+    // Add null check to prevent errors with React 19
     const moveForceNeeded = moveAccNeeded.multiplyScalar(
-      characterRef.current.mass()
+      characterRef.current && typeof characterRef.current.mass === 'function' ? characterRef.current.mass() : 1
     );
 
     /**
@@ -769,21 +770,28 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
     }
 
     // Move character at proper direction and impulse
-    characterRef.current.applyImpulseAtPoint(
-      moveImpulse,
-      {
-        x: currentPos.x,
-        y: currentPos.y + moveImpulsePointY,
-        z: currentPos.z,
-      },
-      true
-    );
+    if (characterRef.current && typeof characterRef.current.applyImpulseAtPoint === 'function') {
+      characterRef.current.applyImpulseAtPoint(
+        moveImpulse,
+        {
+          x: currentPos.x,
+          y: currentPos.y + moveImpulsePointY,
+          z: currentPos.z,
+        },
+        true
+      );
+    }
   };
 
   /**
    * Character auto balance function
    */
   const autoBalanceCharacter = () => {
+    // Check if characterRef.current is available
+    if (!characterRef.current || typeof characterRef.current.rotation !== 'function') {
+      return;
+    }
+
     // Match body component to character model rotation on Y
     bodyFacingVec.set(0, 0, 1).applyQuaternion(quat(characterRef.current.rotation()))
     bodyBalanceVec.set(0, 1, 0).applyQuaternion(quat(characterRef.current.rotation()))
@@ -799,14 +807,21 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
       // Update slopeRayOrigin to new positon
       slopeRayOriginUpdatePosition.set(movingDirection.x, 0, movingDirection.z)
       camBasedMoveCrossVecOnY.copy(slopeRayOriginUpdatePosition).cross(modelFacingVec)
-      slopeRayOriginRef.current.position.x = slopeRayOriginOffest * Math.sin(slopeRayOriginUpdatePosition.angleTo(modelFacingVec) * (camBasedMoveCrossVecOnY.y < 0 ? 1 : -1))
-      slopeRayOriginRef.current.position.z = slopeRayOriginOffest * Math.cos(slopeRayOriginUpdatePosition.angleTo(modelFacingVec) * (camBasedMoveCrossVecOnY.y < 0 ? 1 : -1))
+      if (slopeRayOriginRef.current) {
+        slopeRayOriginRef.current.position.x = slopeRayOriginOffest * Math.sin(slopeRayOriginUpdatePosition.angleTo(modelFacingVec) * (camBasedMoveCrossVecOnY.y < 0 ? 1 : -1))
+        slopeRayOriginRef.current.position.z = slopeRayOriginOffest * Math.cos(slopeRayOriginUpdatePosition.angleTo(modelFacingVec) * (camBasedMoveCrossVecOnY.y < 0 ? 1 : -1))
+      }
     } else {
       characterModelIndicator.getWorldDirection(modelFacingVec)
     }
     crossVecOnX.copy(vectorY).cross(bodyBalanceVecOnX);
     crossVecOnY.copy(modelFacingVec).cross(bodyFacingVecOnY);
     crossVecOnZ.copy(vectorY).cross(bodyBalanceVecOnZ);
+
+    // Check if angvel method is available
+    if (typeof characterRef.current.angvel !== 'function') {
+      return;
+    }
 
     dragAngForce.set(
       (crossVecOnX.x < 0 ? 1 : -1) *
@@ -820,8 +835,10 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
       - characterRef.current.angvel().z * autoBalanceDampingC,
     );
 
-    // Apply balance torque impulse
-    characterRef.current.applyTorqueImpulse(dragAngForce, true)
+    // Apply balance torque impulse if method is available
+    if (typeof characterRef.current.applyTorqueImpulse === 'function') {
+      characterRef.current.applyTorqueImpulse(dragAngForce, true)
+    }
   };
 
   /**
@@ -830,10 +847,14 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
   const sleepCharacter = () => {
     if (characterRef.current) {
       if (document.visibilityState === "hidden") {
-        characterRef.current.sleep()
+        if (typeof characterRef.current.sleep === 'function') {
+          characterRef.current.sleep()
+        }
       } else {
         setTimeout(() => {
-          characterRef.current.wakeUp()
+          if (characterRef.current && typeof characterRef.current.wakeUp === 'function') {
+            characterRef.current.wakeUp()
+          }
         }, wakeUpDelay)
       }
     }
@@ -852,7 +873,7 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
       // If mode is also set to fixed camera. keep the camera on the back of character
       if (isModeFixedCamera) pivot.rotation.y = THREE.MathUtils.lerp(pivot.rotation.y, modelEuler.y, fixedCamRotMult * delta * 3);
       // Once character close to the target point (distance<0.3),
-      // Or character close to the wall (bodySensor intersects) 
+      // Or character close to the wall (bodySensor intersects)
       // stop moving
       if (characterRef.current) {
         if (pointToPoint.length() > 0.3 && !isBodyHitWall && !functionKeyDown) {
@@ -1004,18 +1025,22 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
 
   useEffect(() => {
     // Lock character rotations at Y axis
-    characterRef.current.setEnabledRotations(
-      autoBalance,
-      autoBalance,
-      autoBalance,
-      false
-    );
+    if (characterRef.current && typeof characterRef.current.setEnabledRotations === 'function') {
+      characterRef.current.setEnabledRotations(
+        autoBalance,
+        autoBalance,
+        autoBalance,
+        false
+      );
+    }
 
     // Reset character quaternion
     return (() => {
       if (characterRef.current && characterModelRef.current) {
         characterModelRef.current.quaternion.set(0, 0, 0, 1);
-        characterRef.current.setRotation({ x: 0, y: 0, z: 0, w: 1 }, false);
+        if (typeof characterRef.current.setRotation === 'function') {
+          characterRef.current.setRotation({ x: 0, y: 0, z: 0, w: 1 }, false);
+        }
       }
     })
   }, [autoBalance]);
@@ -1040,13 +1065,19 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
 
     // Character current position/velocity
     if (characterRef.current) {
-      currentPos.copy(characterRef.current.translation() as THREE.Vector3);
-      currentVel.copy(characterRef.current.linvel() as THREE.Vector3);
+      if (typeof characterRef.current.translation === 'function') {
+        currentPos.copy(characterRef.current.translation() as THREE.Vector3);
+      }
+      if (typeof characterRef.current.linvel === 'function') {
+        currentVel.copy(characterRef.current.linvel() as THREE.Vector3);
+      }
       // Assign userDate properties
-      (characterRef.current.userData as userDataType).canJump = canJump;
-      (characterRef.current.userData as userDataType).slopeAngle = slopeAngle;
-      (characterRef.current.userData as userDataType).characterRotated = characterRotated;
-      (characterRef.current.userData as userDataType).isOnMovingObject = isOnMovingObject;
+      if (characterRef.current.userData) {
+        (characterRef.current.userData as userDataType).canJump = canJump;
+        (characterRef.current.userData as userDataType).slopeAngle = slopeAngle;
+        (characterRef.current.userData as userDataType).characterRotated = characterRotated;
+        (characterRef.current.userData as userDataType).isOnMovingObject = isOnMovingObject;
+      }
     }
 
     /**
@@ -1084,7 +1115,7 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
     camCollision && cameraCollisionDetect(delta);
 
     /**
-     * If disableControl is true, skip all following features 
+     * If disableControl is true, skip all following features
      */
     if (disableControl) return;
 
@@ -1131,26 +1162,33 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
       moveCharacter(delta, run, slopeAngle, movingObjectVelocity);
 
     // Jump impulse
-    if ((jump || button1Pressed) && canJump) {
-      // characterRef.current.applyImpulse(jumpDirection.set(0, 0.5, 0), true);
-      jumpVelocityVec.set(
-        currentVel.x,
-        run ? sprintJumpMult * jumpVel : jumpVel,
-        currentVel.z
-      );
-      // Apply slope normal to jump direction
-      characterRef.current.setLinvel(
-        jumpDirection
-          .set(0, (run ? sprintJumpMult * jumpVel : jumpVel) * slopJumpMult, 0)
-          .projectOnVector(actualSlopeNormalVec)
-          .add(jumpVelocityVec),
-        true
-      );
-      // Apply jump force downward to the standing platform
-      characterMassForce.y *= jumpForceToGroundMult;
-      rayHit.collider
-        .parent()
-        ?.applyImpulseAtPoint(characterMassForce, standingForcePoint, true);
+    if ((jump || button1Pressed) && canJump && characterRef.current) {
+      // Check if setLinvel method is available
+      if (typeof characterRef.current.setLinvel === 'function') {
+        // characterRef.current.applyImpulse(jumpDirection.set(0, 0.5, 0), true);
+        jumpVelocityVec.set(
+          currentVel.x,
+          run ? sprintJumpMult * jumpVel : jumpVel,
+          currentVel.z
+        );
+        // Apply slope normal to jump direction
+        characterRef.current.setLinvel(
+          jumpDirection
+            .set(0, (run ? sprintJumpMult * jumpVel : jumpVel) * slopJumpMult, 0)
+            .projectOnVector(actualSlopeNormalVec)
+            .add(jumpVelocityVec),
+          true
+        );
+
+        // Apply jump force downward to the standing platform
+        characterMassForce.y *= jumpForceToGroundMult;
+        if (rayHit && rayHit.collider && typeof rayHit.collider.parent === 'function') {
+          const parent = rayHit.collider.parent();
+          if (parent && typeof parent.applyImpulseAtPoint === 'function') {
+            parent.applyImpulseAtPoint(characterMassForce, standingForcePoint, true);
+          }
+        }
+      }
     }
 
     // Rotate character Indicator
@@ -1350,21 +1388,33 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
     /**
      * Apply floating force
      */
-    if (rayHit != null) {
-      if (canJump && rayHit.collider.parent()) {
-        floatingForce =
-          springK * (floatingDis - rayHit.timeOfImpact) -
-          characterRef.current.linvel().y * dampingC;
-        characterRef.current.applyImpulse(
-          springDirVec.set(0, floatingForce, 0),
-          false
-        );
+    if (rayHit != null && characterRef.current) {
+      if (canJump && rayHit.collider && typeof rayHit.collider.parent === 'function') {
+        const parent = rayHit.collider.parent();
+        if (parent) {
+          // Check if linvel method is available
+          if (typeof characterRef.current.linvel === 'function') {
+            floatingForce =
+              springK * (floatingDis - rayHit.timeOfImpact) -
+              characterRef.current.linvel().y * dampingC;
 
-        // Apply opposite force to standing object (gravity g in rapier is 0.11 ?_?)
-        characterMassForce.set(0, floatingForce > 0 ? -floatingForce : 0, 0);
-        rayHit.collider
-          .parent()
-          ?.applyImpulseAtPoint(characterMassForce, standingForcePoint, true);
+            // Check if applyImpulse method is available
+            if (typeof characterRef.current.applyImpulse === 'function') {
+              characterRef.current.applyImpulse(
+                springDirVec.set(0, floatingForce, 0),
+                false
+              );
+            }
+
+            // Apply opposite force to standing object (gravity g in rapier is 0.11 ?_?)
+            characterMassForce.set(0, floatingForce > 0 ? -floatingForce : 0, 0);
+
+            // Check if applyImpulseAtPoint method is available
+            if (typeof parent.applyImpulseAtPoint === 'function') {
+              parent.applyImpulseAtPoint(characterMassForce, standingForcePoint, true);
+            }
+          }
+        }
       }
     }
 
@@ -1376,7 +1426,8 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
       canJump &&
       joystickDis === 0 &&
       !isPointMoving &&
-      !gamepadKeys.forward && !gamepadKeys.backward && !gamepadKeys.leftward && !gamepadKeys.rightward
+      !gamepadKeys.forward && !gamepadKeys.backward && !gamepadKeys.leftward && !gamepadKeys.rightward &&
+      characterRef.current && typeof characterRef.current.applyImpulse === 'function'
     ) {
       // not on a moving object
       if (!isOnMovingObject) {
@@ -1407,7 +1458,9 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
      * Setup max falling speed && extra falling gravity
      * Remove gravity if falling speed higher than fallingMaxVel (negetive number so use "<")
      */
-    if (characterRef.current) {
+    if (characterRef.current &&
+        typeof characterRef.current.gravityScale === 'function' &&
+        typeof characterRef.current.setGravityScale === 'function') {
       if (currentVel.y < fallingMaxVel) {
         if (characterRef.current.gravityScale() !== 0) {
           characterRef.current.setGravityScale(0, true)
@@ -1426,7 +1479,12 @@ const Ecctrl: ForwardRefRenderFunction<CustomEcctrlRigidBody, EcctrlProps> = ({
     /**
      * Apply auto balance force to the character
      */
-    if (autoBalance && characterRef.current) autoBalanceCharacter();
+    if (autoBalance && characterRef.current &&
+        typeof characterRef.current.rotation === 'function' &&
+        typeof characterRef.current.angvel === 'function' &&
+        typeof characterRef.current.applyTorqueImpulse === 'function') {
+      autoBalanceCharacter();
+    }
 
     /**
      * Point to move feature
