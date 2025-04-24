@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { Box, Plane, useGLTF } from '@react-three/drei';
+import { Box, Plane } from '@react-three/drei';
 import Terrain, { TerrainNS } from '../src/index.js';
 import { generateBlendedMaterial } from '../src/materials.js';
 
@@ -116,10 +116,24 @@ export default function TerrainComponent({ setTerrainScene }) {
         // Extract height values from vertices
         for (let i = 0; i <= depth; i++) {
           for (let j = 0; j <= width; j++) {
-            const index = (i * (width + 1) + j) * 3 + 1; // Y is up in Three.js
-            heightfieldData[i * (width + 1) + j] = vertices[index];
+            // For a plane geometry, the vertices are arranged in a grid
+            // The Y component (height) is at index 1 in each vertex (x,y,z)
+            const vertexIndex = i * (width + 1) + j;
+            const posIndex = vertexIndex * 3 + 1; // Y is at index 1 for a standard plane
+
+            if (posIndex < vertices.length) {
+              // Store the height value
+              heightfieldData[i * (width + 1) + j] = vertices[posIndex];
+            }
           }
         }
+
+        // Log some height values for debugging
+        console.log("Height data sample:", {
+          min: Math.min(...heightfieldData),
+          max: Math.max(...heightfieldData),
+          avg: heightfieldData.reduce((sum, val) => sum + val, 0) / heightfieldData.length
+        });
 
         // Set the terrain mesh
         setTerrainMesh(terrainMesh);
@@ -175,8 +189,8 @@ export default function TerrainComponent({ setTerrainScene }) {
   // Create a platform for the character to stand on
   const createPlatform = () => {
     return (
-      <Box position={[0, 150, 0]} args={[100, 5, 100]} receiveShadow
-           material-color="#ff5500" material-emissive="#ff2200" material-emissiveIntensity={0.3} />
+      <Box position={[0, 150, 0]} args={[100, 5, 100]}
+           material-color="#ff5500" material-emissive="#ff2200" material-emissiveIntensity="0.3" />
     );
   };
 
@@ -192,7 +206,7 @@ export default function TerrainComponent({ setTerrainScene }) {
       <Plane
         position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        args={[terrainDimensions.widthExtents, terrainDimensions.depthExtents, terrainDimensions.width, terrainDimensions.depth]}
+        args={[terrainDimensions.widthExtents, terrainDimensions.depthExtents]}
         material-color="#553322"
         material-wireframe={true}
       />
