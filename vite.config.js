@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import wasm from 'vite-plugin-wasm';
+import terminal from 'vite-plugin-terminal';
 import { resolve } from 'path';
 
 export default defineConfig({
@@ -37,7 +38,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      'three', 
+      'three',
       'three/examples/jsm/controls/FirstPersonControls.js',
       'stats-js',
       'dat.gui'
@@ -46,7 +47,7 @@ export default defineConfig({
   // Specify the entry point
   root: './',
   publicDir: 'public',
-  
+
   // Enable proper resolution of Node modules
   resolve: {
     dedupe: ['three']
