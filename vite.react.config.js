@@ -28,8 +28,7 @@ export default defineConfig({
       'dat.gui',
       '@react-three/fiber',
       '@react-three/drei',
-      '@react-three/rapier',
-      'ecctrl'
+      '@react-three/rapier'
     ]
   }
 });

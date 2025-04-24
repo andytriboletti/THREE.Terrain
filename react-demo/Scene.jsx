@@ -1,26 +1,25 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
-import { Sky, Environment, OrbitControls, Html, useKeyboardControls } from '@react-three/drei';
-import { CuboidCollider, CapsuleCollider } from '@react-three/rapier';
+import { useThree } from '@react-three/fiber';
+import { Sky, Environment, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import TerrainComponent from './TerrainComponent';
 import HeightmapDebug from './HeightmapDebug';
 import Instructions from './Instructions';
-import Character from './Character';
-import ForwardRefRigidBody from './ForwardRefRigidBody';
+import { useRapierMode } from './RapierContext';
 
 export default function Scene() {
   const directionalLight = useRef();
-  const characterModelRef = useRef();
   const [terrainScene, setTerrainScene] = useState(null);
   const [showOrbitControls, setShowOrbitControls] = useState(false);
-  const [characterPosition, setCharacterPosition] = useState([0, 300, 0]);
-  const [characterVelocity, setCharacterVelocity] = useState([0, 0, 0]);
-  const [cameraDistance, setCameraDistance] = useState(10); // Default camera distance
+  const [heightData, setHeightData] = useState(null);
+  const [terrainDimensions, setTerrainDimensions] = useState({
+    width: 64,
+    depth: 64,
+    widthExtents: 1024,
+    depthExtents: 1024
+  });
   const { scene } = useThree();
-
-  // Get keyboard controls
-  const [, getKeys] = useKeyboardControls();
+  const isRapierMode = useRapierMode();
 
   // Add a directional light that will cast shadows
   useEffect(() => {
@@ -62,12 +61,62 @@ export default function Scene() {
 
       console.log("Terrain added to scene", terrainScene);
 
+      // Extract height data from terrain
+      if (terrainScene.children && terrainScene.children[0]) {
+        const terrainMesh = terrainScene.children[0];
+        const geometry = terrainMesh.geometry;
+        const positionAttribute = geometry.getAttribute('position');
+        const vertices = positionAttribute.array;
+
+        // Create a heightfield array from the terrain vertices
+        const width = terrainDimensions.width;
+        const depth = terrainDimensions.depth;
+        const heightfieldData = new Float32Array((width + 1) * (depth + 1));
+
+        // Extract height values from vertices
+        for (let i = 0; i <= depth; i++) {
+          for (let j = 0; j <= width; j++) {
+            const index = (i * (width + 1) + j) * 3 + 1; // Y is up in Three.js
+            heightfieldData[i * (width + 1) + j] = vertices[index];
+          }
+        }
+
+        // Store height data for collision detection
+        setHeightData(heightfieldData);
+        console.log("Terrain height data extracted", heightfieldData.slice(0, 10));
+      }
+
       // Clean up on unmount
       return () => {
         scene.remove(terrainScene);
       };
     }
-  }, [terrainScene, scene]);
+  }, [terrainScene, scene, terrainDimensions]);
+
+  // Function to get terrain height at a specific position
+  const getTerrainHeight = (x, z) => {
+    if (!heightData || !terrainDimensions) return 0;
+
+    // Convert world coordinates to terrain grid coordinates
+    const halfWidth = terrainDimensions.widthExtents / 2;
+    const halfDepth = terrainDimensions.depthExtents / 2;
+
+    // Normalize coordinates to 0-1 range
+    const normalizedX = (x + halfWidth) / terrainDimensions.widthExtents;
+    const normalizedZ = (z + halfDepth) / terrainDimensions.depthExtents;
+
+    // Convert to grid indices
+    const gridX = Math.floor(normalizedX * terrainDimensions.width);
+    const gridZ = Math.floor(normalizedZ * terrainDimensions.depth);
+
+    // Clamp to valid range
+    const clampedGridX = Math.max(0, Math.min(terrainDimensions.width, gridX));
+    const clampedGridZ = Math.max(0, Math.min(terrainDimensions.depth, gridZ));
+
+    // Get height from heightData
+    const index = clampedGridZ * (terrainDimensions.width + 1) + clampedGridX;
+    return heightData[index] || 0;
+  };
 
   // Toggle OrbitControls with 'O' key
   useEffect(() => {
@@ -81,132 +130,7 @@ export default function Scene() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Add mouse wheel event listener for zooming
-  useEffect(() => {
-    const handleWheel = (event) => {
-      // Adjust zoom based on wheel direction
-      setCameraDistance(prevDistance => {
-        // Calculate new distance with limits
-        const newDistance = prevDistance + event.deltaY * 0.01;
-        return Math.max(5, Math.min(100, newDistance)); // Clamp between 5 and 100 (much farther out)
-      });
-    };
 
-    window.addEventListener('wheel', handleWheel);
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  // Character movement logic
-  useFrame((state, delta) => {
-    // Get current keyboard state
-    const { forward, backward, leftward, rightward, jump, run, action1, action2 } = getKeys();
-
-    // Handle zoom with keys 1 and 2
-    if (action1) { // Zoom in with key 1
-      setCameraDistance(prevDistance => Math.max(5, prevDistance - 0.5));
-    }
-    if (action2) { // Zoom out with key 2
-      setCameraDistance(prevDistance => Math.min(100, prevDistance + 0.5));
-    }
-
-    // Calculate movement direction (fixed directions)
-    let moveX = 0;
-    let moveZ = 0;
-
-    // Fix WASD directions - forward is now positive Z, backward is negative Z
-    // leftward is positive X, rightward is negative X
-    if (forward) moveZ += 1;  // Changed from -= to +=
-    if (backward) moveZ -= 1; // Changed from += to -=
-    if (leftward) moveX += 1; // Changed from -= to +=
-    if (rightward) moveX -= 1; // Changed from += to -=
-
-    // Normalize movement vector
-    if (moveX !== 0 || moveZ !== 0) {
-      const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-      moveX /= length;
-      moveZ /= length;
-    }
-
-    // Apply movement in the direction the camera is facing
-    const cameraDirection = new THREE.Vector3();
-    state.camera.getWorldDirection(cameraDirection);
-    cameraDirection.y = 0;
-    cameraDirection.normalize();
-
-    // Calculate movement direction relative to camera
-    const cameraRight = new THREE.Vector3(
-      cameraDirection.z,
-      0,
-      -cameraDirection.x
-    );
-
-    const movingDirection = new THREE.Vector3(
-      cameraRight.x * moveX + cameraDirection.x * moveZ,
-      0,
-      cameraRight.z * moveX + cameraDirection.z * moveZ
-    );
-
-    // Get current position and velocity
-    const [posX, posY, posZ] = characterPosition;
-    const [velX, velY, velZ] = characterVelocity;
-
-    // Calculate new velocity
-    let newVelX = velX;
-    let newVelY = velY;
-    let newVelZ = velZ;
-
-    // Apply movement impulse
-    if (moveX !== 0 || moveZ !== 0) {
-      const speedMultiplier = run ? 2 : 1;
-      const moveSpeed = 8 * delta * 60 * speedMultiplier;
-
-      newVelX += movingDirection.x * moveSpeed;
-      newVelZ += movingDirection.z * moveSpeed;
-
-      // Rotate character to face movement direction
-      const angle = Math.atan2(movingDirection.x, movingDirection.z);
-      if (characterModelRef.current) {
-        characterModelRef.current.rotation.y = angle;
-      }
-    }
-
-    // Handle jumping
-    if (jump) {
-      // Simple ground check - this is not perfect but works for demo
-      if (posY < 1.1) {
-        newVelY = 7; // Jump velocity
-      }
-    }
-
-    // Apply gravity
-    newVelY -= 9.8 * delta;
-
-    // Apply drag to limit velocity
-    newVelX *= 0.9;
-    newVelZ *= 0.9;
-
-    // Calculate new position
-    const newPosX = posX + newVelX * delta;
-    const newPosY = Math.max(0.5, posY + newVelY * delta); // Prevent going below ground
-    const newPosZ = posZ + newVelZ * delta;
-
-    // Update state
-    setCharacterPosition([newPosX, newPosY, newPosZ]);
-    setCharacterVelocity([newVelX, newVelY, newVelZ]);
-
-    // Update camera position to follow character with dynamic distance
-    state.camera.position.x = newPosX - cameraDirection.x * cameraDistance;
-    state.camera.position.z = newPosZ - cameraDirection.z * cameraDistance;
-
-    // Height scales with distance but with a curve that flattens for very large distances
-    // This gives a more top-down view when zoomed far out
-    const heightScale = cameraDistance <= 20
-      ? cameraDistance * 0.5 // Normal scaling for close distances
-      : 10 + Math.sqrt(cameraDistance - 20) * 3; // Square root scaling for far distances
-
-    state.camera.position.y = newPosY + heightScale;
-    state.camera.lookAt(newPosX, newPosY, newPosZ);
-  });
 
   return (
     <>
@@ -227,25 +151,13 @@ export default function Scene() {
       {/* Optional OrbitControls for debugging - toggle with 'O' key */}
       {showOrbitControls && <OrbitControls />}
 
-      {/* Character with direct position control */}
-      <group position={characterPosition} ref={characterModelRef}>
-        <Character />
-      </group>
+      {/* No character controller in this scene */}
 
       {/* Terrain Component */}
       <TerrainComponent setTerrainScene={setTerrainScene} />
 
       {/* Heightmap Debug Component */}
       <HeightmapDebug />
-
-      {/* Ground plane for safety */}
-      <ForwardRefRigidBody type="fixed">
-        <CuboidCollider args={[500, 0.1, 500]} position={[0, -20, 0]} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -20, 0]} receiveShadow>
-          <planeGeometry args={[1000, 1000]} />
-          <meshStandardMaterial color="#5d8a68" />
-        </mesh>
-      </ForwardRefRigidBody>
 
       {/* Instructions UI */}
       <Instructions />

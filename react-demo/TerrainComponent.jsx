@@ -1,23 +1,17 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
-import { RigidBody, CuboidCollider, HeightfieldCollider } from '@react-three/rapier';
-import { useRapier } from '@react-three/rapier';
 import Terrain, { TerrainNS } from '../src/index.js';
 import { generateBlendedMaterial } from '../src/materials.js';
 
 export default function TerrainComponent({ setTerrainScene }) {
   const [terrainMesh, setTerrainMesh] = useState(null);
   const [heightData, setHeightData] = useState(null);
-  const [terrainDimensions, setTerrainDimensions] = useState({
+  const [terrainDimensions] = useState({
     width: 63,
     depth: 63,
     widthExtents: 1024,
     depthExtents: 1024
   });
-  const { rapier, world } = useRapier();
-  const terrainRef = useRef();
-  const { scene } = useThree();
 
   useEffect(() => {
     // Create terrain options with clear height differences
@@ -142,51 +136,19 @@ export default function TerrainComponent({ setTerrainScene }) {
     }
   }, [terrainMesh]);
 
-  // Create a heightfield collider for the terrain
-  const createTerrainCollider = () => {
-    if (!terrainMesh || !heightData) return null;
-
-    // Use the HeightfieldCollider from @react-three/rapier 2.1.0
-    // This is similar to the example you shared
-    return (
-      <RigidBody type="fixed" colliders={false}>
-        <HeightfieldCollider
-          args={[
-            terrainDimensions.width, // number of rows
-            terrainDimensions.depth, // number of columns
-            heightData, // height data array
-            {
-              x: terrainDimensions.widthExtents,
-              y: 200, // height scale
-              z: terrainDimensions.depthExtents
-            } // size
-          ]}
-          rotation={[-Math.PI / 2, 0, 0]} // Rotate to match terrain orientation
-          friction={1.0}
-          restitution={0.2}
-        />
-      </RigidBody>
-    );
-  };
-
   // Create a platform for the character to stand on
   const createPlatform = () => {
     return (
-      <RigidBody type="fixed">
-        <mesh position={[0, 150, 0]} receiveShadow>
-          <boxGeometry args={[100, 5, 100]} />
-          <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-        </mesh>
-      </RigidBody>
+      <mesh position={[0, 150, 0]} receiveShadow>
+        <boxGeometry args={[100, 5, 100]} />
+        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
+      </mesh>
     );
   };
 
   return (
     <>
-      {/* Use the heightfield collider for the terrain */}
-      {terrainMesh && heightData && createTerrainCollider()}
-
-      {/* Keep the platform as a fallback in case the heightfield doesn't work */}
+      {/* Platform for the character to stand on */}
       {createPlatform()}
     </>
   );

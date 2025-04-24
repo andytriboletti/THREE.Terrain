@@ -1,12 +1,9 @@
-import React, { Suspense, useState, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { KeyboardControls, Stats } from '@react-three/drei';
-import { Physics } from '@react-three/rapier';
-import Scene from './Scene';
+import React, { useState, useEffect } from 'react';
+import RapierDemo from './RapierDemo';
 import ErrorBoundary from './ErrorBoundary';
 import './styles.css';
 
-// Keyboard control preset for ECCtrl
+// Keyboard control map
 const keyboardMap = [
   { name: "forward", keys: ["ArrowUp", "KeyW"] },
   { name: "backward", keys: ["ArrowDown", "KeyS"] },
@@ -66,27 +63,19 @@ export default function App() {
   return (
     <>
       <ErrorBoundary>
-        <KeyboardControls map={keyboardMap}>
-          <Canvas
-            shadows
-            camera={{ position: [0, 10, 20], fov: 45 }}
-            gl={{ antialias: true }}
-            onError={(e) => {
-              console.error("Canvas error:", e);
-            }}
-          >
-            <color attach="background" args={['#87CEEB']} />
-            <fog attach="fog" args={['#87CEEB', 30, 500]} />
-            <Stats />
-            <Suspense fallback={null}>
-              <ErrorBoundary>
-                <Physics debug={debug}>
-                  <Scene />
-                </Physics>
-              </ErrorBoundary>
-            </Suspense>
-          </Canvas>
-        </KeyboardControls>
+        {/* Always render the Rapier implementation */}
+        <RapierDemo />
+
+        {/* Instructions overlay */}
+        <div className="instructions">
+          <h2>Controls</h2>
+          <p>WASD / Arrow Keys: Move</p>
+          <p>Space: Jump</p>
+          <p>Shift: Sprint</p>
+          <p>1/2: Zoom In/Out</p>
+          <p>Mouse Wheel: Zoom</p>
+          <p>P: Toggle Physics Debug</p>
+        </div>
       </ErrorBoundary>
     </>
   );
