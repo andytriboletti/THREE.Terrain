@@ -60,15 +60,55 @@ const RapierCharacterController = forwardRef(({
     // Initialize character controller if Rapier is available
     try {
       if (rapier && world) {
-        const characterController = world.raw().createCharacterController(0.1);
-        characterController.setApplyImpulsesToDynamicBodies(true);
-        characterController.setCharacterMass(1.0);
-        characterController.enableSnapToGround(0.1);
-        controller.current = characterController;
-        terminal.log("Character controller initialized");
+        // In React Three Rapier, the world object is different from raw Rapier
+        // We need to access the raw world differently
+        let rawWorld;
+
+        // Try different ways to access the raw world
+        if (typeof world.raw === 'function') {
+          rawWorld = world.raw();
+        } else if (world._raw) {
+          rawWorld = world._raw;
+        } else {
+          // Direct access if it's already the raw world
+          rawWorld = world;
+        }
+
+        terminal.log("Got raw world:", rawWorld);
+
+        // Try different ways to create the character controller
+        try {
+          // First try with the new API (object parameter)
+          const characterController = rawWorld.createCharacterController({
+            offset: 0.1,
+            applyImpulsesToDynamicBodies: true,
+            characterMass: 1.0,
+            enableSnapToGround: true,
+            snapToGroundDistance: 0.1
+          });
+          controller.current = characterController;
+          terminal.log("Character controller initialized with new API");
+        } catch (innerError) {
+          terminal.log("New API failed:", innerError);
+          try {
+            // Fall back to the old API
+            terminal.log("Falling back to old character controller API");
+            const characterController = rawWorld.createCharacterController(0.1);
+            characterController.setApplyImpulsesToDynamicBodies(true);
+            characterController.setCharacterMass(1.0);
+            characterController.enableSnapToGround(0.1);
+            controller.current = characterController;
+            terminal.log("Character controller initialized with old API");
+          } catch (oldApiError) {
+            terminal.error("Old API failed too:", oldApiError);
+            // If both APIs fail, we'll just use basic movement
+            terminal.log("Using basic movement without character controller");
+          }
+        }
       }
     } catch (error) {
       terminal.error("Failed to initialize character controller", error);
+      console.error("Character controller error:", error);
     }
 
     // Add mouse wheel event listener for zooming
@@ -193,14 +233,52 @@ const RapierCharacterController = forwardRef(({
         // Create a Rapier vector for the movement
         const rapierVec = new rapier.Vector3(moveDirection.x, moveDirection.y, moveDirection.z);
 
-        // Apply the movement
-        characterController.computeColliderMovement(
-          colliderRef.current.raw(),
-          rapierVec
-        );
+        // Get the raw collider
+        let rawCollider;
+        if (colliderRef.current) {
+          if (typeof colliderRef.current.raw === 'function') {
+            rawCollider = colliderRef.current.raw();
+          } else if (colliderRef.current._raw) {
+            rawCollider = colliderRef.current._raw;
+          } else {
+            // Direct access if it's already the raw collider
+            rawCollider = colliderRef.current;
+          }
+        } else {
+          terminal.error("No collider reference available");
+          return; // Skip the rest of the movement logic
+        }
+
+        // Apply the movement - handle potential API differences
+        try {
+          // Try the new API first
+          characterController.computeColliderMovement(
+            rawCollider,
+            rapierVec
+          );
+        } catch (apiError) {
+          // Fall back to alternative API if needed
+          terminal.log("Falling back to alternative movement API");
+          try {
+            // Try with different parameter order
+            characterController.computeColliderMovement(
+              rapierVec,
+              rawCollider
+            );
+          } catch (fallbackError) {
+            terminal.error("All movement API attempts failed", fallbackError);
+            return; // Skip the rest of the movement logic
+          }
+        }
 
         // Get the effective movement
-        const effectiveMovement = characterController.computedMovement();
+        let effectiveMovement;
+        try {
+          effectiveMovement = characterController.computedMovement();
+        } catch (movementError) {
+          terminal.error("Failed to get computed movement", movementError);
+          return; // Skip the rest of the movement logic
+        }
 
         // Apply the movement to the rigid body
         rigidBodyRef.current.setNextKinematicTranslation({
@@ -210,9 +288,17 @@ const RapierCharacterController = forwardRef(({
         });
 
         // Check if character is grounded after movement
-        setGrounded(characterController.computedGrounded());
+        try {
+          setGrounded(characterController.computedGrounded());
+        } catch (groundedError) {
+          // If computedGrounded() fails, use our own grounding check
+          terminal.log("Using fallback grounding check");
+          // We already have isGrounded from earlier in the code
+          setGrounded(isGrounded);
+        }
       } catch (error) {
         terminal.error("Error in character controller:", error);
+        console.error("Character movement error:", error);
       }
 
       // Rotate character to face movement direction

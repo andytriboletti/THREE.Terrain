@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
+import { Box, Plane } from '@react-three/drei';
 import Terrain, { TerrainNS } from '../src/index.js';
 import { generateBlendedMaterial } from '../src/materials.js';
 
 export default function TerrainComponent({ setTerrainScene }) {
   const [terrainMesh, setTerrainMesh] = useState(null);
-  const [heightData, setHeightData] = useState(null);
   const [terrainDimensions] = useState({
     width: 63,
     depth: 63,
@@ -37,25 +37,59 @@ export default function TerrainComponent({ setTerrainScene }) {
     };
 
     // Load textures for the terrain
-    const textureLoader = new THREE.TextureLoader();
     const loadTextures = async () => {
       try {
-        // Load textures directly from the public folder
-        const textures = [
-          { texture: await textureLoader.loadAsync('/img/sand1.jpg') },
-          {
-            texture: await textureLoader.loadAsync('/img/grass1.jpg'),
-            levels: [-80, -35, 20, 50]
-          },
-          {
-            texture: await textureLoader.loadAsync('/img/stone1.jpg'),
-            levels: [20, 50, 60, 85]
-          },
-          {
-            texture: await textureLoader.loadAsync('/img/snow1.jpg'),
-            levels: [60, 85, 120, 150]
-          },
-        ];
+        // Create colored textures as placeholders
+        console.log("Creating placeholder textures...");
+
+        const textures = [];
+
+        // Sand texture (brown)
+        const sandCanvas = document.createElement('canvas');
+        sandCanvas.width = 256;
+        sandCanvas.height = 256;
+        const sandCtx = sandCanvas.getContext('2d');
+        sandCtx.fillStyle = '#f0d090';
+        sandCtx.fillRect(0, 0, 256, 256);
+        textures.push({ texture: new THREE.CanvasTexture(sandCanvas) });
+
+        // Grass texture (green)
+        const grassCanvas = document.createElement('canvas');
+        grassCanvas.width = 256;
+        grassCanvas.height = 256;
+        const grassCtx = grassCanvas.getContext('2d');
+        grassCtx.fillStyle = '#60a060';
+        grassCtx.fillRect(0, 0, 256, 256);
+        textures.push({
+          texture: new THREE.CanvasTexture(grassCanvas),
+          levels: [-80, -35, 20, 50]
+        });
+
+        // Stone texture (gray)
+        const stoneCanvas = document.createElement('canvas');
+        stoneCanvas.width = 256;
+        stoneCanvas.height = 256;
+        const stoneCtx = stoneCanvas.getContext('2d');
+        stoneCtx.fillStyle = '#808080';
+        stoneCtx.fillRect(0, 0, 256, 256);
+        textures.push({
+          texture: new THREE.CanvasTexture(stoneCanvas),
+          levels: [20, 50, 60, 85]
+        });
+
+        // Snow texture (white)
+        const snowCanvas = document.createElement('canvas');
+        snowCanvas.width = 256;
+        snowCanvas.height = 256;
+        const snowCtx = snowCanvas.getContext('2d');
+        snowCtx.fillStyle = '#ffffff';
+        snowCtx.fillRect(0, 0, 256, 256);
+        textures.push({
+          texture: new THREE.CanvasTexture(snowCanvas),
+          levels: [60, 85, 120, 150]
+        });
+
+        console.log("Created placeholder textures:", textures.length);
 
         // Create blended material
         const material = generateBlendedMaterial(textures);
@@ -87,9 +121,11 @@ export default function TerrainComponent({ setTerrainScene }) {
           }
         }
 
-        // Set the terrain mesh and height data
+        // Set the terrain mesh
         setTerrainMesh(terrainMesh);
-        setHeightData(heightfieldData);
+
+        // Store height data in the window object for access by other components
+        window.terrainHeightData = heightfieldData;
 
         // Set the terrain scene for the parent component
         setTerrainScene(terrainScene);
@@ -139,17 +175,27 @@ export default function TerrainComponent({ setTerrainScene }) {
   // Create a platform for the character to stand on
   const createPlatform = () => {
     return (
-      <mesh position={[0, 150, 0]} receiveShadow>
-        <boxGeometry args={[100, 5, 100]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
+      <Box position={[0, 150, 0]} args={[100, 5, 100]} receiveShadow
+           material-color="#ff5500" material-emissive="#ff2200" material-emissiveIntensity={0.3} />
     );
   };
 
   return (
     <>
+      {/* The terrain is added directly to the scene in the useEffect hook */}
+      {/* We don't need to render it here because it's already in the scene */}
+
       {/* Platform for the character to stand on */}
       {createPlatform()}
+
+      {/* Debug mesh to visualize the terrain */}
+      <Plane
+        position={[0, 0, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        args={[terrainDimensions.widthExtents, terrainDimensions.depthExtents, terrainDimensions.width, terrainDimensions.depth]}
+        material-color="#553322"
+        material-wireframe={true}
+      />
     </>
   );
 }

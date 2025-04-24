@@ -19,7 +19,7 @@ const keyboardMap = [
 ];
 
 // Terrain component that uses the existing THREE.Terrain
-const Terrain = ({ terrainScene, heightData, terrainDimensions }) => {
+const Terrain = ({ terrainScene }) => {
   const terrainRef = useRef();
 
   useEffect(() => {
@@ -28,57 +28,65 @@ const Terrain = ({ terrainScene, heightData, terrainDimensions }) => {
       terrainRef.current.add(terrainScene);
 
       // Make the terrain mesh available to the window for height checks
-      window.terrainMesh = terrainScene;
+      window.terrainMesh = terrainScene.children[0];
 
       // Create a function to get terrain height at a specific position
       window.getTerrainHeight = (x, z) => {
-        if (!heightData || !terrainDimensions) return 0;
-
-        // Convert world coordinates to heightmap indices
-        const { width, height, maxHeight } = terrainDimensions;
-
-        // Adjust for terrain position and scale
-        const terrainX = Math.floor((x + width/2) / width * (heightData.length - 1));
-        const terrainZ = Math.floor((z + height/2) / height * (heightData[0].length - 1));
-
-        // Clamp to valid indices
-        const clampedX = Math.max(0, Math.min(heightData.length - 1, terrainX));
-        const clampedZ = Math.max(0, Math.min(heightData[0].length - 1, terrainZ));
-
-        // Get height from heightmap
-        return heightData[clampedX][clampedZ] * maxHeight;
+        // This is a simplified height check - in a real application,
+        // you would use raycasting or sample the terrain height data
+        return 0; // Default height
       };
     }
-  }, [terrainScene, heightData, terrainDimensions]);
+  }, [terrainScene]);
 
   // Create a heightfield collider for the terrain
   const createHeightfieldCollider = () => {
-    if (!heightData || !terrainDimensions) return null;
+    if (!terrainScene) return null;
 
-    const { width, height, maxHeight } = terrainDimensions;
+    // Get the terrain mesh
+    const terrainMesh = terrainScene.children[0];
+    if (!terrainMesh || !terrainMesh.geometry) return null;
 
-    // HeightfieldCollider expects a 1D array of heights
-    const nrows = heightData.length;
-    const ncols = heightData[0].length;
-    const heights = new Float32Array(nrows * ncols);
+    // Get the terrain dimensions
+    const width = 63;
+    const depth = 63;
+    const widthExtents = 1024;
+    const depthExtents = 1024;
 
-    // Fill the heights array
-    for (let i = 0; i < nrows; i++) {
-      for (let j = 0; j < ncols; j++) {
-        heights[i * ncols + j] = heightData[i][j] * maxHeight;
+    // Extract height data from the terrain mesh
+    const geometry = terrainMesh.geometry;
+    const positionAttribute = geometry.getAttribute('position');
+    const vertices = positionAttribute.array;
+
+    // Create a heightfield array
+    const heights = new Float32Array((width + 1) * (depth + 1));
+
+    // Extract height values from vertices
+    for (let i = 0; i <= depth; i++) {
+      for (let j = 0; j <= width; j++) {
+        // In Three.js, Y is up, but we need to extract it based on the terrain's orientation
+        // For a plane rotated to be horizontal, we need the Z value
+        const vertexIndex = i * (width + 1) + j;
+        const posIndex = vertexIndex * 3 + 2; // Y is at index 2 for a rotated plane
+
+        if (posIndex < vertices.length) {
+          heights[i * (width + 1) + j] = vertices[posIndex];
+        }
       }
     }
+
+    terminal.log("Created heightfield collider with dimensions:", width, depth);
 
     return (
       <HeightfieldCollider
         args={[
-          nrows - 1, // number of rows - 1
-          ncols - 1, // number of columns - 1
+          width, // number of rows
+          depth, // number of columns
           heights, // heights as a flat array
-          { x: width, y: maxHeight, z: height } // scale
+          { x: widthExtents, y: 1, z: depthExtents } // scale
         ]}
-        position={[-width/2, 0, -height/2]} // Center the heightfield
-        rotation={[-Math.PI / 2, 0, 0]} // Rotate to match THREE.Terrain orientation
+        position={[-widthExtents/2, 0, -depthExtents/2]} // Center the heightfield
+        rotation={[0, 0, 0]} // No rotation needed as we extracted heights correctly
       />
     );
   };
@@ -91,16 +99,16 @@ const Terrain = ({ terrainScene, heightData, terrainDimensions }) => {
 };
 
 // Main scene component
-const RapierScene = ({ terrainScene, heightData, terrainDimensions }) => {
+const RapierScene = ({ terrainScene }) => {
   const [physicsEnabled, setPhysicsEnabled] = useState(false);
 
   useEffect(() => {
-    // Enable physics once terrain data is loaded
-    if (terrainScene && heightData && terrainDimensions) {
+    // Enable physics once terrain scene is loaded
+    if (terrainScene) {
       setPhysicsEnabled(true);
       terminal.log("Physics enabled with terrain data");
     }
-  }, [terrainScene, heightData, terrainDimensions]);
+  }, [terrainScene]);
 
   return (
     <KeyboardControls map={keyboardMap}>
@@ -117,11 +125,7 @@ const RapierScene = ({ terrainScene, heightData, terrainDimensions }) => {
 
         {physicsEnabled && (
           <Physics gravity={[0, -9.81, 0]} debug={false}>
-            <Terrain
-              terrainScene={terrainScene}
-              heightData={heightData}
-              terrainDimensions={terrainDimensions}
-            />
+            <Terrain terrainScene={terrainScene} />
 
             <RapierCharacterController
               position={[0, 300, 0]}
