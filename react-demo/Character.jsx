@@ -1,4 +1,4 @@
-import React, { useRef, forwardRef } from 'react';
+import React, { useRef, forwardRef, useMemo } from 'react';
 import { Box, Sphere, Capsule } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -18,57 +18,64 @@ const Character = forwardRef(function Character(_, ref) {
   //   }
   // });
 
+  // Create materials
+  const bodyMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+    color: "#ff5500",
+    emissive: "#ff2200",
+    emissiveIntensity: 0.3
+  }), []);
+
+  const eyeWhiteMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+    color: "white"
+  }), []);
+
+  const eyeBlackMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+    color: "black"
+  }), []);
+
   return (
     <group ref={characterRef}>
       {/* Body */}
-      <mesh castShadow>
-        <capsuleGeometry args={[0.3, 1, 16, 16]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
+      <Capsule args={[0.3, 1, 16, 16]} castShadow material={bodyMaterial} />
 
       {/* Head */}
-      <mesh position={[0, 0.8, 0]} castShadow>
-        <sphereGeometry args={[0.25, 32, 32]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
+      <Sphere position={[0, 0.8, 0]} args={[0.25, 32, 32]} castShadow material={bodyMaterial} />
 
       {/* Eyes */}
-      <mesh position={[0.1, 0.85, 0.18]} castShadow>
-        <sphereGeometry args={[0.05, 16, 16]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-      <mesh position={[-0.1, 0.85, 0.18]} castShadow>
-        <sphereGeometry args={[0.05, 16, 16]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-      <mesh position={[0.1, 0.85, 0.23]} castShadow>
-        <sphereGeometry args={[0.025, 16, 16]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
-      <mesh position={[-0.1, 0.85, 0.23]} castShadow>
-        <sphereGeometry args={[0.025, 16, 16]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
+      <Sphere position={[0.1, 0.85, 0.18]} args={[0.05, 16, 16]} castShadow material={eyeWhiteMaterial} />
+      <Sphere position={[-0.1, 0.85, 0.18]} args={[0.05, 16, 16]} castShadow material={eyeWhiteMaterial} />
+      <Sphere position={[0.1, 0.85, 0.23]} args={[0.025, 16, 16]} castShadow material={eyeBlackMaterial} />
+      <Sphere position={[-0.1, 0.85, 0.23]} args={[0.025, 16, 16]} castShadow material={eyeBlackMaterial} />
 
       {/* Arms */}
-      <mesh position={[0.4, 0.2, 0]} rotation={[0, 0, -Math.PI / 6]} castShadow>
-        <capsuleGeometry args={[0.08, 0.5, 16, 16]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
-      <mesh position={[-0.4, 0.2, 0]} rotation={[0, 0, Math.PI / 6]} castShadow>
-        <capsuleGeometry args={[0.08, 0.5, 16, 16]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
+      <Capsule
+        position={[0.4, 0.2, 0]}
+        rotation={[0, 0, -Math.PI / 6]}
+        args={[0.08, 0.5, 16, 16]}
+        castShadow
+        material={bodyMaterial}
+      />
+      <Capsule
+        position={[-0.4, 0.2, 0]}
+        rotation={[0, 0, Math.PI / 6]}
+        args={[0.08, 0.5, 16, 16]}
+        castShadow
+        material={bodyMaterial}
+      />
 
       {/* Legs */}
-      <mesh position={[0.15, -0.6, 0]} castShadow>
-        <capsuleGeometry args={[0.1, 0.5, 16, 16]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
-      <mesh position={[-0.15, -0.6, 0]} castShadow>
-        <capsuleGeometry args={[0.1, 0.5, 16, 16]} />
-        <meshStandardMaterial color="#ff5500" emissive="#ff2200" emissiveIntensity={0.3} />
-      </mesh>
+      <Capsule
+        position={[0.15, -0.6, 0]}
+        args={[0.1, 0.5, 16, 16]}
+        castShadow
+        material={bodyMaterial}
+      />
+      <Capsule
+        position={[-0.15, -0.6, 0]}
+        args={[0.1, 0.5, 16, 16]}
+        castShadow
+        material={bodyMaterial}
+      />
     </group>
   );
 });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { Box, Plane } from '@react-three/drei';
+import { Box, Plane, useTexture } from '@react-three/drei';
 import Terrain, { TerrainNS } from '../src/index.js';
 import { generateBlendedMaterial } from '../src/materials.js';
 
@@ -189,13 +189,15 @@ export default function TerrainComponent({ setTerrainScene }) {
   // Create a platform for the character to stand on
   const createPlatform = () => {
     return (
-      <Box position={[0, 150, 0]} args={[100, 5, 100]}>
-        <meshStandardMaterial
-          color="#ff5500"
-          emissive="#ff2200"
-          emissiveIntensity={0.3}
-        />
-      </Box>
+      <Box
+        position={[0, 150, 0]}
+        args={[100, 5, 100]}
+        material={new THREE.MeshStandardMaterial({
+          color: "#ff5500",
+          emissive: "#ff2200",
+          emissiveIntensity: 0.3
+        })}
+      />
     );
   };
 
@@ -212,12 +214,11 @@ export default function TerrainComponent({ setTerrainScene }) {
         position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         args={[terrainDimensions.widthExtents, terrainDimensions.depthExtents]}
-      >
-        <meshBasicMaterial
-          color="#553322"
-          wireframe={true}
-        />
-      </Plane>
+        material={new THREE.MeshBasicMaterial({
+          color: "#553322",
+          wireframe: true
+        })}
+      />
     </>
   );
 }
