@@ -42,22 +42,6 @@ export default function App() {
 
     // Intentionally log a test warning to verify error reporting
     console.warn("TEST WARNING: This is a test warning to verify error reporting");
-
-    // Log any React errors that might be happening
-    const originalError = console.error;
-    console.error = function(...args) {
-      // Check if this is a React error
-      const errorString = args.join(' ');
-      if (errorString.includes('React') || errorString.includes('Warning:')) {
-        originalError.apply(console, ['REACT ERROR DETECTED:', ...args]);
-      } else {
-        originalError.apply(console, args);
-      }
-    };
-
-    return () => {
-      console.error = originalError;
-    };
   }, []);
 
   return (

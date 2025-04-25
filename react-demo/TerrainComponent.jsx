@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { Box, Plane, useTexture } from '@react-three/drei';
+import { Box, Plane } from '@react-three/drei';
 import Terrain, { TerrainNS } from '../src/index.js';
 import { generateBlendedMaterial } from '../src/materials.js';
+import { Group } from './R3FComponents';
 
 export default function TerrainComponent({ setTerrainScene }) {
   const [terrainMesh, setTerrainMesh] = useState(null);
@@ -202,10 +203,7 @@ export default function TerrainComponent({ setTerrainScene }) {
   };
 
   return (
-    <>
-      {/* The terrain is added directly to the scene in the useEffect hook */}
-      {/* We don't need to render it here because it's already in the scene */}
-
+    <Group>
       {/* Platform for the character to stand on */}
       {createPlatform()}
 
@@ -219,6 +217,6 @@ export default function TerrainComponent({ setTerrainScene }) {
           wireframe: true
         })}
       />
-    </>
+    </Group>
   );
 }

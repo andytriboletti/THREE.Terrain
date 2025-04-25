@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { KeyboardControls, Sky, Stars, Box } from '@react-three/drei';
 import { Physics, HeightfieldCollider, RigidBody } from '@react-three/rapier';
+import { Group } from './R3FComponents';
 import SimpleEcctrl from './SimpleEcctrl';
 import ECCtrlCharacter from './ECCtrlCharacter';
 import { terminal } from "virtual:terminal";
@@ -132,9 +133,12 @@ const Terrain = ({ terrainScene }) => {
     const createPlatform = () => {
       return (
         <RigidBody type="fixed" position={[0, 250, 0]} colliders="cuboid">
-          <Box args={[100, 5, 100]} receiveShadow castShadow>
-            <meshStandardMaterial color="#ff5500" />
-          </Box>
+          <Box
+            args={[100, 5, 100]}
+            receiveShadow
+            castShadow
+            material={new THREE.MeshStandardMaterial({ color: "#ff5500" })}
+          />
         </RigidBody>
       );
     };
@@ -163,9 +167,9 @@ const Terrain = ({ terrainScene }) => {
   };
 
   return (
-    <group ref={terrainRef}>
+    <Group ref={terrainRef}>
       {heightData && terrainDimensions && createHeightfieldCollider()}
-    </group>
+    </Group>
   );
 };
 

@@ -4,6 +4,7 @@ import { useKeyboardControls } from '@react-three/drei';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import * as THREE from 'three';
 import { terminal } from "virtual:terminal";
+import { Group } from './R3FComponents';
 
 // A simplified version of ECCtrl that works with React 19
 // This removes dependencies on leva, @react-spring/three, and zustand
