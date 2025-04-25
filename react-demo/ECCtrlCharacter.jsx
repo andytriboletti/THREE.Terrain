@@ -1,5 +1,6 @@
 import React from 'react';
 import { Capsule, Sphere } from '@react-three/drei';
+import * as THREE from 'three';
 
 // Simple character model using a capsule - same as RapierCharacter but for ECCtrl
 const ECCtrlCharacter = () => {

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { KeyboardControls, Sky, Stars, Box } from '@react-three/drei';
 import { Physics, HeightfieldCollider, RigidBody } from '@react-three/rapier';
-import Ecctrl, { EcctrlAnimation } from '../ecctrl/src/Ecctrl';
+import SimpleEcctrl from './SimpleEcctrl';
 import ECCtrlCharacter from './ECCtrlCharacter';
 import { terminal } from "virtual:terminal";
 import TerrainCollider from './TerrainCollider';
@@ -170,8 +170,9 @@ const Terrain = ({ terrainScene }) => {
 };
 
 // Main scene component
-const RapierScene = ({ terrainScene }) => {
+const SimpleRapierScene = ({ terrainScene }) => {
   const [physicsEnabled, setPhysicsEnabled] = useState(false);
+  const characterRef = useRef();
 
   useEffect(() => {
     // Enable physics once terrain scene is loaded
@@ -198,14 +199,11 @@ const RapierScene = ({ terrainScene }) => {
           <Physics gravity={[0, -20, 0]} debug={false} timeStep="vary">
             <Terrain terrainScene={terrainScene} />
 
-            <Ecctrl
-              ref={(ref) => {
-                if (ref) {
-                  window.characterRef = ref;
-                }
-              }}
+            <SimpleEcctrl
+              ref={characterRef}
               position={[0, 500, 0]}
               jumpVel={15}
+              moveSpeed={10}
               maxVelLimit={20}
               sprintMult={3}
               floatHeight={2}
@@ -215,26 +213,16 @@ const RapierScene = ({ terrainScene }) => {
               camFollowMult={11}
               turnSpeed={15}
               slopeMaxAngle={1}
-              fallingGravityScale={5}
-              fallingMaxVel={-100}
-              rayLength={10}
-              rayDir={{ x: 0, y: -1, z: 0 }}
               debug={true}
-              autoBalance={true}
-              enableDamping={true}
-              enableJoystick={false}
-              enableFlyMode={false}
-              showDebugGui={true}
-              rigidBodyType="dynamic"
             >
               <ECCtrlCharacter />
-            </Ecctrl>
+            </SimpleEcctrl>
 
             {/* Add TerrainCollider to handle raycasting for terrain collision */}
-            {terrainScene && window.characterRef && (
+            {terrainScene && characterRef.current && (
               <TerrainCollider
                 terrainMesh={terrainScene.children[0]}
-                characterRef={window.characterRef}
+                characterRef={characterRef.current}
               />
             )}
           </Physics>
@@ -244,4 +232,4 @@ const RapierScene = ({ terrainScene }) => {
   );
 };
 
-export default RapierScene;
+export default SimpleRapierScene;

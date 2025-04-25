@@ -189,8 +189,13 @@ export default function TerrainComponent({ setTerrainScene }) {
   // Create a platform for the character to stand on
   const createPlatform = () => {
     return (
-      <Box position={[0, 150, 0]} args={[100, 5, 100]}
-           material-color="#ff5500" material-emissive="#ff2200" material-emissiveIntensity="0.3" />
+      <Box position={[0, 150, 0]} args={[100, 5, 100]}>
+        <meshStandardMaterial
+          color="#ff5500"
+          emissive="#ff2200"
+          emissiveIntensity={0.3}
+        />
+      </Box>
     );
   };
 
@@ -207,9 +212,12 @@ export default function TerrainComponent({ setTerrainScene }) {
         position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         args={[terrainDimensions.widthExtents, terrainDimensions.depthExtents]}
-        material-color="#553322"
-        material-wireframe={true}
-      />
+      >
+        <meshBasicMaterial
+          color="#553322"
+          wireframe={true}
+        />
+      </Plane>
     </>
   );
 }

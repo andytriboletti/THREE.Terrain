@@ -1,4 +1,6 @@
 import React, { useRef, forwardRef } from 'react';
+import { Box, Sphere, Capsule } from '@react-three/drei';
+import * as THREE from 'three';
 
 const Character = forwardRef(function Character(_, ref) {
   const characterRef = useRef();

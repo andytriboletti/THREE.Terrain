@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import RapierScene from './RapierScene';
+import SimpleRapierScene from './SimpleRapierScene';
 import TerrainComponent from './TerrainComponent';
 import { terminal } from "virtual:terminal";
 
@@ -48,8 +48,8 @@ const RapierDemo = () => {
         <TerrainComponent setTerrainScene={setTerrainScene} />
       </div>
 
-      {/* Pass the terrain scene to RapierScene */}
-      <RapierScene terrainScene={terrainScene} />
+      {/* Pass the terrain scene to SimpleRapierScene */}
+      <SimpleRapierScene terrainScene={terrainScene} />
     </>
   );
 };
